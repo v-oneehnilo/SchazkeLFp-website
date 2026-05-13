@@ -1,29 +1,242 @@
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ArrowDown, Music, Play, ExternalLink, Mail, Disc } from 'lucide-react';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
-const VideoCover = ({ src }: { src: string }) => {
+const CustomCursor = ({ audioIntensityRef }: { audioIntensityRef: React.RefObject<number> }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cursorCircleRef = useRef<HTMLDivElement>(null);
+  const particles = useRef<any[]>([]);
+  const mousePos = useRef({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+  const [isIdle, setIsIdle] = useState(false);
+  const lastMoveTime = useRef(Date.now());
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mousePos.current = { x: e.clientX, y: e.clientY };
+      lastMoveTime.current = Date.now();
+      setIsIdle(false);
+
+      // Manual DOM styling for position
+      if (cursorCircleRef.current) {
+        const size = isHovering ? 44 : 32;
+        cursorCircleRef.current.style.transform = `translate3d(${e.clientX - size/2}px, ${e.clientY - size/2}px, 0)`;
+      }
+
+      const target = e.target as HTMLElement;
+      const isInteractive = target.closest('button, a, .group, [role="button"]');
+      if (!!isInteractive !== isHovering) {
+        setIsHovering(!!isInteractive);
+      }
+    };
+
+    const idleCheck = setInterval(() => {
+      if (Date.now() - lastMoveTime.current > 2000) {
+        setIsIdle(true);
+      }
+    }, 100);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      clearInterval(idleCheck);
+    };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const intensity = audioIntensityRef.current || 0;
+
+      if (!isIdle) {
+        const speed = intensity > 0.4 ? 6 : 2;
+        const count = Math.min(Math.floor(intensity * 8) + 1, 4);
+        const shapes = ['circle', 'square', 'star', 'pentagon', 'irregular'];
+
+        if (particles.current.length < 150) {
+          for (let i = 0; i < count; i++) {
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            const size = Math.random() * 4 + 2 + (intensity * 12);
+            
+            let irregularPoints = [];
+            if (shape === 'irregular') {
+              const pointsCount = 4 + Math.floor(Math.random() * 3);
+              for(let j=0; j<pointsCount; j++) {
+                irregularPoints.push({
+                  x: (Math.random() - 0.5) * size * 2,
+                  y: (Math.random() - 0.5) * size * 2
+                });
+              }
+            }
+
+            particles.current.push({
+              x: mousePos.current.x,
+              y: mousePos.current.y,
+              vx: (Math.random() - 0.5) * speed,
+              vy: (Math.random() - 0.5) * speed,
+              life: 1.0,
+              size,
+              shape,
+              irregularPoints
+            });
+          }
+        }
+      }
+
+      // Manual DOM styling for scale beat
+      if (cursorCircleRef.current) {
+        const scale = isIdle ? 0 : (1 + intensity * 1.8);
+        const opacity = isIdle ? 0 : 0.8;
+        cursorCircleRef.current.style.opacity = String(opacity);
+        const innerCircle = cursorCircleRef.current.querySelector('.cursor-inner') as HTMLElement;
+        if (innerCircle) {
+           innerCircle.style.transform = `scale(${scale})`;
+        }
+      }
+
+      // Update and draw particles
+      ctx.fillStyle = '#ffffff';
+      for (let i = particles.current.length - 1; i >= 0; i--) {
+        const p = particles.current[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.02;
+
+        if (p.life <= 0) {
+          particles.current.splice(i, 1);
+          continue;
+        }
+
+        ctx.globalAlpha = p.life * (isIdle ? 0.3 : 1) * 0.8;
+        
+        ctx.beginPath();
+        const s = p.size * p.life;
+        
+        if (p.shape === 'circle') {
+          ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
+        } else if (p.shape === 'square') {
+          ctx.rect(p.x - s, p.y - s, s * 2, s * 2);
+        } else if (p.shape === 'star') {
+          let spikes = 5;
+          let outerRadius = s;
+          let innerRadius = s / 2;
+          let rot = Math.PI / 2 * 3;
+          let cx = p.x;
+          let cy = p.y;
+          let step = Math.PI / spikes;
+          ctx.moveTo(p.x, p.y - outerRadius);
+          for (let k = 0; k < spikes; k++) {
+            cx = p.x + Math.cos(rot) * outerRadius;
+            cy = p.y + Math.sin(rot) * outerRadius;
+            ctx.lineTo(cx, cy);
+            rot += step;
+            cx = p.x + Math.cos(rot) * innerRadius;
+            cy = p.y + Math.sin(rot) * innerRadius;
+            ctx.lineTo(cx, cy);
+            rot += step;
+          }
+          ctx.closePath();
+        } else if (p.shape === 'pentagon') {
+          const sides = 5;
+          const step = (Math.PI * 2) / sides;
+          const startAngle = -Math.PI / 2;
+          for (let k = 0; k < sides; k++) {
+            const px = p.x + Math.cos(startAngle + step * k) * s;
+            const py = p.y + Math.sin(startAngle + step * k) * s;
+            if (k === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+        } else if (p.shape === 'irregular') {
+          p.irregularPoints.forEach((pt: any, idx: number) => {
+            const ix = p.x + pt.x * p.life;
+            const iy = p.y + pt.y * p.life;
+            if (idx === 0) ctx.moveTo(ix, iy);
+            else ctx.lineTo(ix, iy);
+          });
+          ctx.closePath();
+        }
+        ctx.fill();
+      }
+
+      requestAnimationFrame(render);
+    };
+
+    const animReq = requestAnimationFrame(render);
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animReq);
+    };
+  }, [isIdle]);
+
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 pointer-events-none z-[100] mix-blend-difference"
+      />
+      <div
+        ref={cursorCircleRef}
+        className="fixed top-0 left-0 border border-white rounded-full pointer-events-none z-[101] mix-blend-difference flex items-center justify-center overflow-hidden transition-[width,height,background-color,border-width] duration-300 ease-out"
+        style={{
+          width: isHovering ? 44 : 32,
+          height: isHovering ? 44 : 32,
+          borderWidth: isHovering ? 22 : 1,
+          backgroundColor: isHovering ? "rgba(255, 255, 255, 1)" : "rgba(255, 255, 255, 0)",
+          willChange: 'transform, opacity'
+        }}
+      >
+        <div 
+          className="cursor-inner w-full h-full flex items-center justify-center" 
+          style={{ willChange: 'transform' }}
+        >
+          {!isHovering && (
+            <div className="w-1.5 h-1.5 bg-white rounded-full opacity-80" />
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+const VideoCover = ({ src, hasInteracted }: { src: string; hasInteracted: boolean }) => {
   const [inView, setInView] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       setInView(entry.isIntersecting);
-    }, { rootMargin: '50px' });
+    }, { rootMargin: '100px' });
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (inView && videoRef.current) {
+    if (inView && hasInteracted && videoRef.current) {
       videoRef.current.play().catch(() => {});
+    } else if (videoRef.current) {
+      videoRef.current.pause();
     }
-  }, [inView]);
+  }, [inView, hasInteracted]);
 
   return (
-    <div ref={ref} className="absolute inset-0 z-0 w-full h-full bg-zinc-900 transition-colors duration-500">
-      {inView && (
+    <div ref={ref} className="absolute inset-0 z-0 w-full h-full bg-[#0a0a0a] transition-colors duration-500 flex items-center justify-center">
+      {!isLoaded && <Disc className="w-8 h-8 text-white/5 animate-spin-slow" />}
+      {inView && hasInteracted && (
         <video 
           ref={videoRef}
           src={src}
@@ -31,8 +244,10 @@ const VideoCover = ({ src }: { src: string }) => {
           loop
           muted
           playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-60 group-hover:opacity-100 pointer-events-none"
+          onCanPlay={() => setIsLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 group-hover:scale-110 pointer-events-none ${
+            isLoaded ? 'opacity-40 group-hover:opacity-100' : 'opacity-0'
+          }`}
         />
       )}
     </div>
@@ -44,6 +259,14 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLocked, setIsLocked] = useState(true);
   const [bounce, setBounce] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [audioIntensity, setAudioIntensity] = useState(0);
+  const audioIntensityRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
   const [currentVideo, setCurrentVideo] = useState({
     title: "温差",
     type: "【星尘原创曲】 / 重型盯鞋",
@@ -127,6 +350,63 @@ export default function App() {
   }, [volume, currentVideo]);
 
   useEffect(() => {
+    const initAudio = () => {
+      if (!videoRef.current || audioContextRef.current) return;
+
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+      const ctx = new AudioContextClass();
+      const analyser = ctx.createAnalyser();
+      const source = ctx.createMediaElementSource(videoRef.current);
+
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const update = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        
+        // Focus on low frequencies (bass/kicks) for the "beat"
+        let sum = 0;
+        const bassCount = 10; // First 10 bins are low freq
+        for (let i = 0; i < bassCount; i++) {
+          sum += dataArray[i];
+        }
+        const intensity = sum / (bassCount * 255);
+        audioIntensityRef.current = intensity;
+        
+        // Update state less frequently for general UI, but use Ref for high-performance canvas
+        if (Math.random() > 0.8) {
+          setAudioIntensity(intensity);
+        }
+        animationFrameRef.current = requestAnimationFrame(update);
+      };
+      update();
+    };
+
+    const handleStart = () => {
+      if (audioContextRef.current?.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+      initAudio();
+    };
+
+    window.addEventListener('click', handleStart);
+    window.addEventListener('keydown', handleStart);
+
+    return () => {
+      window.removeEventListener('click', handleStart);
+      window.removeEventListener('keydown', handleStart);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     const attemptPlay = async () => {
       if (!videoRef.current) return;
       
@@ -156,34 +436,51 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [currentVideo]);
 
-  // Unmute on first user interaction if it was muted by autoplay policy
+  // Unmute and resume AudioContext on first user interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
-      if (videoRef.current && videoRef.current.muted) {
-        videoRef.current.muted = false;
-        videoRef.current.volume = volume;
-        // In case it wasn't playing, try playing again
+      setHasInteracted(true);
+      if (videoRef.current) {
+        if (videoRef.current.muted) {
+          videoRef.current.muted = false;
+          videoRef.current.volume = volume;
+        }
+        
+        // Ensure AudioContext is resumed
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        
         videoRef.current.play().catch(() => {});
         setIsPlaying(true);
       }
+      
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
       window.removeEventListener('wheel', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
     };
 
     window.addEventListener('click', handleFirstInteraction);
     window.addEventListener('touchstart', handleFirstInteraction);
     window.addEventListener('wheel', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
 
     return () => {
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
       window.removeEventListener('wheel', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
     };
   }, [volume]);
 
   const handleVideoClick = () => {
+    setHasInteracted(true);
     if (videoRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+      
       if (isPlaying) {
         videoRef.current.pause();
       } else {
@@ -301,7 +598,46 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#e0d8d0] font-sans relative flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-[#e0d8d0] font-sans relative flex flex-col overflow-x-hidden cursor-none">
+      <CustomCursor audioIntensityRef={audioIntensityRef} />
+      
+      {/* Interaction Hint Overlay */}
+      <AnimatePresence>
+        {!hasInteracted && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.2, transition: { duration: 0.8, ease: "easeOut" } }}
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none bg-black/40 backdrop-blur-[4px]"
+          >
+            <motion.div
+              animate={{
+                scale: [1, 1.05, 1],
+                opacity: [0.2, 0.4, 0.2],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="relative flex items-center justify-center"
+            >
+              <div className="absolute w-[500px] h-[500px] bg-white/5 rounded-full blur-[100px]" />
+              <Play className="w-64 h-64 text-white/10 fill-white/5" strokeWidth={0.2} />
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 1.5 }}
+              className="mt-16 text-white/30 text-[12px] uppercase tracking-[2em] font-light text-center"
+            >
+              Click Everywhere to Begin
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Navigation */}
       <nav className="fixed top-0 inset-x-0 z-50 mix-blend-difference">
         <div className="w-full mx-auto px-6 md:px-12 py-8 flex items-center justify-between">
@@ -343,6 +679,7 @@ export default function App() {
             loop
             muted
             playsInline
+            crossOrigin="anonymous"
             preload="auto"
             className="w-full h-full object-cover"
           />
@@ -434,7 +771,7 @@ export default function App() {
               className="cursor-pointer relative overflow-hidden bg-zinc-900 group aspect-square md:aspect-[4/3] flex items-center justify-center"
               onDoubleClick={() => handleDoubleClick(item)}
             >
-              <VideoCover src={item.cover} />
+              <VideoCover src={item.cover} hasInteracted={hasInteracted} />
               <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end pointer-events-none z-10">
                 <h3 className="text-xl md:text-2xl font-serif text-white tracking-wide drop-shadow-md">{item.title}</h3>
                 <p className="text-[10px] uppercase tracking-[0.1em] opacity-80 mt-1 text-white drop-shadow-md">{item.type}</p>
