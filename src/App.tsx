@@ -650,19 +650,27 @@ export default function App() {
     };
 
     const handleFirstInteraction = () => {
+      if (hasInteracted) return;
       setHasInteracted(true);
+      
       if (videoRef.current) {
-        // Essential for iOS: play must be triggered directly in event
+        // Force unmuted play on interaction
         videoRef.current.muted = false;
         videoRef.current.volume = volume;
-        videoRef.current.play().catch((err) => {
-          console.log("Play failed on interaction, trying muted:", err);
-          if (videoRef.current) {
-            videoRef.current.muted = true;
-            videoRef.current.play().catch(console.error);
-          }
-        });
-        setIsPlaying(true);
+        const playPromise = videoRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setIsPlaying(true);
+          }).catch((err) => {
+            console.warn("Play failed even with interaction:", err);
+            // Fallback to muted play
+            if (videoRef.current) {
+               videoRef.current.muted = true;
+               videoRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
+            }
+          });
+        }
       }
       
       handleStart();
@@ -1232,25 +1240,28 @@ export default function App() {
       {/* Cinematic Background Layer */}
       <div className="absolute inset-0 z-0 pointer-events-auto cursor-pointer flex items-center justify-center" onClick={handleVideoClick}>
         <video 
+          key={currentVideo.videoUrl}
           ref={videoRef}
-          src={currentVideo.videoUrl}
           autoPlay
           loop
-          muted
+          muted={!hasInteracted}
           playsInline
+          className="w-full h-full object-cover"
           crossOrigin="anonymous"
           preload="auto"
-          className="w-full h-full object-cover"
-        />
+        >
+          <source src={currentVideo.videoUrl} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
         
         {/* Mobile Play Button Fallback */}
-        {!isPlaying && hasInteracted && (
+        {(!isPlaying || !hasInteracted) && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative z-30 p-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20"
+            className="absolute z-30 p-8 rounded-full bg-white/5 backdrop-blur-[2px] border border-white/10"
           >
-            <Play className="w-12 h-12 text-white fill-white" />
+            <Play className="w-10 h-10 text-white opacity-40" />
           </motion.div>
         )}
       </div>
