@@ -6,6 +6,7 @@ const CustomCursor = ({ audioIntensityRef }: { audioIntensityRef: React.RefObjec
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cursorCircleRef = useRef<HTMLDivElement>(null);
   const particles = useRef<any[]>([]);
+  const trail = useRef<{x: number, y: number}[]>([]);
   const mousePos = useRef({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [isIdle, setIsIdle] = useState(false);
@@ -16,6 +17,12 @@ const CustomCursor = ({ audioIntensityRef }: { audioIntensityRef: React.RefObjec
       mousePos.current = { x: e.clientX, y: e.clientY };
       lastMoveTime.current = Date.now();
       setIsIdle(false);
+
+      // Mouse trail persistence
+      trail.current.unshift({ x: e.clientX, y: e.clientY });
+      if (trail.current.length > 20) {
+        trail.current.pop();
+      }
 
       // Manual DOM styling for position
       if (cursorCircleRef.current) {
@@ -84,8 +91,8 @@ const CustomCursor = ({ audioIntensityRef }: { audioIntensityRef: React.RefObjec
             particles.current.push({
               x: mousePos.current.x,
               y: mousePos.current.y,
-              vx: (Math.random() - 0.5) * speed,
-              vy: (Math.random() - 0.5) * speed,
+              vx: (Math.random() - 0.5) * speed * 0.5, // Reduced speed
+              vy: (Math.random() - 0.5) * speed * 0.5, // Reduced speed
               life: 1.0,
               size,
               shape,
@@ -112,7 +119,7 @@ const CustomCursor = ({ audioIntensityRef }: { audioIntensityRef: React.RefObjec
         const p = particles.current[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.life -= 0.02;
+        p.life -= 0.01; // Slower decay
 
         if (p.life <= 0) {
           particles.current.splice(i, 1);
@@ -169,6 +176,20 @@ const CustomCursor = ({ audioIntensityRef }: { audioIntensityRef: React.RefObjec
           ctx.closePath();
         }
         ctx.fill();
+      }
+
+      // Draw Mouse Trail
+      if (trail.current.length > 2) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + intensity * 0.3})`;
+        ctx.lineWidth = 1 + intensity * 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(trail.current[0].x, trail.current[0].y);
+        for(let i=1; i < trail.current.length; i++) {
+          ctx.lineTo(trail.current[i].x, trail.current[i].y);
+        }
+        ctx.stroke();
       }
 
       requestAnimationFrame(render);
@@ -254,6 +275,218 @@ const VideoCover = ({ src, hasInteracted }: { src: string; hasInteracted: boolea
   );
 };
 
+const AudioVisualizer = ({ intensityRef }: { intensityRef: React.RefObject<number> }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animFrame: number;
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+      }
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const speakers = [
+      { x: 0.15, y: 0.5, size: 100 },
+      { x: 0.85, y: 0.5, size: 100 },
+    ];
+
+    const draw = () => {
+      // Smoother motion blur effect
+      ctx.fillStyle = 'rgba(8, 8, 8, 0.2)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const intensity = intensityRef.current || 0;
+      const time = Date.now() / 1000;
+
+      // Dynamic scaling of the coordinate system based on pulse
+      const globalScale = 1 + intensity * 0.05;
+      
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(globalScale, globalScale);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      // Camera shake on high intensity
+      if (intensity > 0.7) {
+        const shake = (intensity - 0.7) * 20;
+        ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+      }
+
+      // Shifting color theme
+      const hue = 210 + Math.sin(time * 0.3) * 30; // Blue to Indigo range
+      const glowOpacity = 0.04 + intensity * 0.1;
+
+      // Central glowing orb
+      const orbGradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, 400 * (1 + intensity)
+      );
+      orbGradient.addColorStop(0, `hsla(${hue}, 80%, 60%, ${glowOpacity})`);
+      orbGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = orbGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Central Rhythm Line
+      ctx.beginPath();
+      ctx.strokeStyle = `hsla(${hue}, 100%, 100%, ${0.1 + intensity * 0.3})`;
+      ctx.lineWidth = 1 + intensity * 2;
+      for(let x=0; x<canvas.width; x+=10) {
+        const distFromCenter = Math.abs(x - canvas.width/2);
+        const falloff = Math.exp(-distFromCenter / 300);
+        const wave = Math.sin(x * 0.02 - time * 10) * (intensity * 60 * falloff);
+        if(x===0) ctx.moveTo(x, canvas.height/2 + wave);
+        else ctx.lineTo(x, canvas.height/2 + wave);
+      }
+      ctx.stroke();
+
+      speakers.forEach((s, idx) => {
+        const cx = s.x * canvas.width;
+        const cy = s.y * canvas.height;
+        const baseRadius = s.size;
+        // Pulse logic: more aggressive on intensities (simulating beat detection)
+        const pulse = 1 + Math.pow(intensity, 2) * 0.8;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(time * 0.1 * (idx % 2 === 0 ? 1 : -1));
+
+        // Speaker box with glowing edges (thinner lines)
+        ctx.shadowBlur = 5 * intensity;
+        ctx.shadowColor = `hsla(${hue}, 100%, 100%, 0.5)`;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 100%, ${0.2 + intensity * 0.3})`;
+        ctx.lineWidth = 1 + intensity * 1.5;
+        ctx.strokeRect(-baseRadius * 1.2, -baseRadius * 1.5, baseRadius * 2.4, baseRadius * 3);
+        ctx.shadowBlur = 0;
+
+        // Reactive drivers
+        for (let i = 0; i < 3; i++) {
+           const r = baseRadius * (0.4 + i * 0.3) * pulse;
+           ctx.beginPath();
+           ctx.arc(0, 0, r, 0, Math.PI * 2);
+           ctx.stroke();
+           
+           if (intensity > 0.5) {
+             ctx.save();
+             ctx.rotate(time * 3 + i);
+             ctx.beginPath();
+             ctx.moveTo(r, 0);
+             ctx.lineTo(r + 20 * intensity, 0);
+             ctx.stroke();
+             ctx.restore();
+           }
+        }
+        ctx.restore();
+      });
+
+      // Digital Glitch Effect
+      if (canvas.width > 0 && canvas.height > 0 && (intensity > 0.6 || Math.random() > 0.97)) {
+        const glitchLayers = intensity > 0.8 ? 4 : 2;
+        ctx.save();
+        for(let j=0; j < glitchLayers; j++) {
+          const sliceH = Math.random() * 100 + 10;
+          const sliceY = Math.random() * (canvas.height - sliceH);
+          if (sliceH <= 0 || sliceY < 0) continue;
+          
+          const hOffset = (Math.random() - 0.5) * 120 * intensity;
+          
+          ctx.save();
+          ctx.translate(hOffset, 0);
+          ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+          
+          // RGB Split / Color Malfunction
+          if (Math.random() > 0.4) {
+             const colors = ['hue-rotate(90deg)', 'hue-rotate(180deg)', 'hue-rotate(270deg)', 'invert(100%)', 'brightness(2)'];
+             ctx.filter = colors[Math.floor(Math.random() * colors.length)];
+          }
+
+          ctx.drawImage(canvas, 0, sliceY, canvas.width, sliceH, 0, sliceY, canvas.width, sliceH);
+          ctx.restore();
+
+          // Blocky digital artifacts
+          if (Math.random() > 0.7) {
+            ctx.fillStyle = `hsla(${hue}, 100%, 80%, ${0.15 * intensity})`;
+            ctx.fillRect(Math.random() * canvas.width, sliceY, Math.random() * 200, sliceH * 0.2);
+          }
+        }
+        ctx.restore();
+
+        // Horizontal flickering scanlines
+        for(let i=0; i<3; i++) {
+          if (Math.random() > 0.6) {
+            const scanY = Math.random() * canvas.height;
+            ctx.fillStyle = `hsla(${hue}, 100%, 100%, ${0.2 * intensity})`;
+            ctx.fillRect(0, scanY, canvas.width, 1);
+          }
+        }
+      }
+
+      ctx.restore();
+      animFrame = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animFrame);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-50" />;
+};
+
+const LyricsSection = ({ track, intensityRef }: { track: any; intensityRef: React.RefObject<number> }) => {
+  return (
+    <section className="relative w-full py-40 overflow-hidden bg-[#080808] border-y border-white/5 flex flex-col items-center justify-center min-h-[60vh]">
+      <AudioVisualizer intensityRef={intensityRef} />
+      
+      <div className="relative z-10 max-w-4xl w-full px-6 text-center space-y-12">
+        <motion.div
+           key={track.title}
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 1 }}
+        >
+          <span className="text-[10px] uppercase tracking-[0.5em] text-white/30 font-semibold mb-2 block">Now Playing</span>
+          <h2 className="text-4xl md:text-5xl font-serif italic text-white tracking-tight">{track.title}</h2>
+        </motion.div>
+
+        <div className="space-y-6">
+          {track.lyrics ? (
+            track.lyrics.map((line: string, i: number) => (
+              <motion.p
+                key={`${track.title}-${i}`}
+                initial={{ opacity: 0, filter: 'blur(10px)' }}
+                whileInView={{ opacity: 1, filter: 'blur(0px)' }}
+                viewport={{ margin: "-10%" }}
+                transition={{ delay: i * 0.1, duration: 0.8 }}
+                className="text-lg md:text-2xl font-light text-white/30 tracking-wider hover:text-white transition-colors cursor-default"
+              >
+                {line}
+              </motion.p>
+            ))
+          ) : (
+            <p className="text-white/20 italic">Lyrics loading...</p>
+          )}
+        </div>
+      </div>
+
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20">
+        <Disc className="w-12 h-12 animate-spin-slow text-white" />
+      </div>
+    </section>
+  );
+};
+
 export default function App() {
   const [volume, setVolume] = useState(0.1);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -271,7 +504,24 @@ export default function App() {
     title: "温差",
     type: "【星尘原创曲】 / 重型盯鞋",
     desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
-    videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4"
+    videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4",
+    lyrics: [
+      "擦干眼泪吧 我们一起出发吧",
+      "拥抱着遗憾 逃向外太空",
+      "牵着我",
+      "与你一起似乎能无视引力",
+      "依存在彼此间",
+      "能否暂停时间",
+      "不需要害怕",
+      "闭上眼",
+      "用双手触摸的虚幻",
+      "漂浮在陌生的维度",
+      "感受着彼此间温差",
+      "我一直在寻找 你化作星光之后的信号",
+      "带上我 凝固在时间之外吧",
+      "Now will you hold me tight",
+      "Now kiss me one last time"
+    ]
   });
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -518,7 +768,24 @@ export default function App() {
       type: "【星尘原创曲】 / 重型盯鞋",
       desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/4d9W/5%25E6%259C%258811%25E6%2597%25A5.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/4d9W/5%25E6%259C%258811%25E6%2597%25A5.mp4",
+      lyrics: [
+        "擦干眼泪吧 我们一起出发吧",
+        "拥抱着遗憾 逃向外太空",
+        "牵着我",
+        "与你一起似乎能无视引力",
+        "依存在彼此间",
+        "能否暂停时间",
+        "不需要害怕",
+        "闭上眼",
+        "用双手触摸的虚幻",
+        "漂浮在陌生的维度",
+        "感受着彼此间温差",
+        "我一直在寻找 你化作星光之后的信号",
+        "带上我 凝固在时间之外吧",
+        "Now will you hold me tight",
+        "Now kiss me one last time"
+      ]
     },
     {
       id: 2,
@@ -526,7 +793,38 @@ export default function App() {
       type: "【星尘原创曲】 / 盯鞋核 / 重型盯鞋",
       desc: "如果在深渊中无法停下坠落，不如尝试最后一次深呼吸。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/35816540671-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/1Zi1/5%25E6%259C%258811%25E6%2597%25A5%288%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/1Zi1/5%25E6%259C%258811%25E6%2597%25A5%288%29.mp4",
+      lyrics: [
+        "松开手的一瞬间",
+        "你渐行渐远 害怕着改变",
+        "若忘记自我的话",
+        "无论多少次",
+        "我都会为你歌唱",
+        "无数次地回忆着",
+        "每一个无法 入睡的夜晚",
+        "忘不掉伤痕的话",
+        "就该吞下吗",
+        "他们说这就是长大",
+        "失去指针的钟仍会转动却不自知",
+        "I DON’T BELONG HERE",
+        "我交出我的声音 生命",
+        "所有热爱遗憾",
+        "每个承诺虚幻脆弱期待",
+        "只想告诉你",
+        "难过的话",
+        "只需要深呼吸",
+        "带着微笑",
+        "哭出来吧",
+        "Stand by my side",
+        "WHEREVER YOU ARE",
+        "I’LL ALWAYS BE BY YOUR SIDE",
+        "EVERY TIME YOU CRY",
+        "I’LL ALWAYS BE BY YOUR SIDE",
+        "JUST BREATHE IN BREATHE OUT",
+        "I’LL ALWAYS BE BY YOUR SIDE",
+        "REMAIN AS YOU ARE",
+        "I’LL ALWAYS BE BY YOUR SIDE"
+      ]
     },
     {
       id: 3,
@@ -534,7 +832,70 @@ export default function App() {
       type: "【星尘原创曲】 / 金属核 / 盯鞋",
       desc: "金属核与盯鞋的交织融合，于激烈的节奏中质问内心的归属。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/30601838745-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/TVhj/5%25E6%259C%258811%25E6%2597%25A5%282%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/TVhj/5%25E6%259C%258811%25E6%2597%25A5%282%29.mp4",
+      lyrics: [
+        "长眠后的世界",
+        "我从未感到如此温暖",
+        "此刻我只剩下一个愿望",
+        "再一次 用手心包裹着我",
+        "绽放 溃烂",
+        "悄悄闭上眼",
+        "指尖传来温柔的触感",
+        "与你的声音",
+        "融为一体",
+        "有什么 仍藏在你的倒影下",
+        "是幻觉",
+        "也许是死亡讲的冷笑话",
+        "欢笑吧",
+        "欢笑吧",
+        "我的一切",
+        "（我的一切）",
+        "在我眼前",
+        "（慢动作中）",
+        "逐渐毁灭",
+        "或是错觉",
+        "没有悲伤与害怕",
+        "留下再见与晚安",
+        "享受这迷人致命温柔幻象",
+        "刺入我心脏",
+        "只是错觉我期望",
+        "感谢药物和噩梦交织的癫狂",
+        "Just a phantom",
+        "Loathed and feared",
+        "sit back and",
+        "Watch me dance",
+        "God",
+        "Watch me shatter into dust",
+        "Fill me up with your white lies",
+        "Wake up",
+        "泥土的芳香",
+        "在宁静中灌入我的鼻腔",
+        "你曾告诉我每个故事",
+        "因有结局",
+        "才让一切变得有意义",
+        "可是我",
+        "仍害怕某天被你所遗忘",
+        "答应我",
+        "答应我",
+        "（或是错觉）",
+        "没有悲伤与害怕",
+        "留下再见与晚安",
+        "享受这迷人致命温柔幻象",
+        "刺入我心脏",
+        "只是错觉我期望",
+        "感谢药物和噩梦交织的癫狂",
+        "Just a phantom",
+        "Loathed and feared",
+        "sit back and",
+        "Watch me bleed",
+        "God",
+        "I never felt so alive",
+        "But I just can't evade",
+        "You have become my shades",
+        "As ghost reflects the shape of you",
+        "Shattered mind",
+        "Out of sight"
+      ]
     },
     {
       id: 4,
@@ -542,7 +903,42 @@ export default function App() {
       type: "【星尘原创】",
       desc: "强烈的情绪如同恐慌发作，冲击着崩坏的现实边界。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/1276391741-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/NKUP/5%25E6%259C%258811%25E6%2597%25A5%283%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/NKUP/5%25E6%259C%258811%25E6%2597%25A5%283%29.mp4",
+      lyrics: [
+        "睁开眼 重复的一天",
+        "挣扎着重启 任由泪水滑落",
+        "努力说出无所谓的话",
+        "那不是我的声音",
+        "Every words you said had turned me upside down",
+        "(I DON'T BELONG HERE)",
+        "I don't wanna be a shell of your existence",
+        "Voices in my head keep taking my mind",
+        "I can't get it out I can't get it out of",
+        "Maybe I'm already drowning inside",
+        "Everything I see is turning into pieces",
+        "I just want to feel okay guess I never will",
+        "Look into my eyes can you feel my pain",
+        "I can't stand this anymore",
+        "(I DON'T BELONG HERE)",
+        "(闭嘴）",
+        "(I DON'T BELONG HERE)",
+        "（闭嘴）",
+        "(I DON'T BELONG HERE)",
+        "Everything I see is turning into pieces",
+        "I just want to feel okay guess I never will",
+        "I don't wanna be a shell of your existence",
+        "Voices in my head keep taking my mind",
+        "I can't get it out I can't get it out of",
+        "Maybe I'm already drowning inside",
+        "Everything I see is turning into pieces",
+        "I just want to feel okay guess I never will",
+        "Look into my eyes can you feel my pain",
+        "I can't stand this anymore",
+        "(欢迎光临，请问有什么可以帮到你？）",
+        "（不知道）",
+        "*PANIC ATTACK*",
+        "（不用了谢谢）"
+      ]
     },
     {
       id: 5,
@@ -550,7 +946,37 @@ export default function App() {
       type: "【星尘原创曲】",
       desc: "M-O-T-H，如飞蛾扑火般去向未知的迷茫。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/27052740232-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/0n4A/5%25E6%259C%258811%25E6%2597%25A5%285%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/0n4A/5%25E6%259C%258811%25E6%2597%25A5%285%29.mp4",
+      lyrics: [
+        "Floating high",
+        "Like a moth into the flame",
+        "I whispered",
+        "I drowned myself in doubt",
+        "肆意起舞在雨中癫狂",
+        "将寒冷灌进我的心脏",
+        "强忍着自己不去害怕",
+        "可是这一切这世界是如此疯狂",
+        "我感受不到太阳的热量",
+        "包裹着我在温暖中窒息",
+        "泪水映出季节的幻灭",
+        "你我视线交错的终点",
+        "是全新的世界",
+        "所有痛苦挣扎与遗憾",
+        "此刻都成为我的躯壳",
+        "来与我共舞吧",
+        "Floating high",
+        "Like a moth into the flame",
+        "Like a moth into the flame",
+        "泪水映出季节的幻灭",
+        "你我视线交错的终点",
+        "是全新的世界",
+        "所有痛苦挣扎与遗憾",
+        "此刻都成为我的躯壳",
+        "邀请我共舞吧",
+        "Floating high",
+        "Like a moth into the flame",
+        "Like a moth into the flame"
+      ]
     },
     {
       id: 6,
@@ -558,7 +984,36 @@ export default function App() {
       type: "feat.星尘infinity / 盯鞋 / 金属核",
       desc: "重重迷雾与声墙之中，究竟什么是真实，什么只是幻觉。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/30471291973-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/9Ac0/5%25E6%259C%258811%25E6%2597%25A5%284%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/9Ac0/5%25E6%259C%258811%25E6%2597%25A5%284%29.mp4",
+      lyrics: [
+        "作词: 伤口SchazkeLF_p",
+        "作曲: 伤口SchazkeLF_p",
+        "编曲: 伤口SchazkeLF_p",
+        "与你的声音融为一体",
+        "有什么仍藏在你的倒影下",
+        "绽放",
+        "分不清",
+        "游离于梦境",
+        "被遗忘",
+        "或是错觉",
+        "听不清",
+        "遥远的哭泣",
+        "闭上眼",
+        "是谁的终点",
+        "...wake up",
+        "温暖的手心包裹我",
+        "指尖传来熟悉的触感",
+        "终于听清你的声音",
+        "谢谢你一直保护我",
+        "成为我倒影中的幽灵",
+        "我不会再让你担心",
+        "此刻起我的每个瞬间",
+        "都成为你的永远",
+        "我会带着你生命的重量",
+        "继续活下去",
+        "与你的声音融为一体",
+        "有什么仍藏在你的倒影下"
+      ]
     },
     {
       id: 7,
@@ -566,7 +1021,51 @@ export default function App() {
       type: "【星尘原创】",
       desc: "深呼吸，在一切坠落之前找回自我片刻的宁静。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/1353293988-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/5pHc/5%25E6%259C%258811%25E6%2597%25A5%286%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/5pHc/5%25E6%259C%258811%25E6%2597%25A5%286%29.mp4",
+      lyrics: [
+        "松开手的一瞬间",
+        "你渐行渐远",
+        "害怕着改变",
+        "若忘记自我的话",
+        "无论多少次",
+        "我都会为你歌唱",
+        "无数次地回忆着",
+        "每一个无法入睡的夜晚",
+        "忘不掉伤痕的话",
+        "就该吞下吗",
+        "他们说这就是长大",
+        "失去指针的钟仍会转动却不自知",
+        "（I don't belong here)",
+        "我交出我的",
+        "声音 生命",
+        "所有热爱 遗憾",
+        "每个承诺 虚幻",
+        "脆弱期待",
+        "只想告诉你",
+        "难过的话",
+        "只需要深呼吸",
+        "带着微笑",
+        "哭出来吧",
+        "（Stand by my side）",
+        "重复相同的童话",
+        "用谎言编写",
+        "将自我丢下",
+        "其实我早已发现",
+        "内心的幽灵",
+        "已经厌倦那样的话",
+        "（接下来的一分钟）",
+        "（丢掉你的所有借口）",
+        "（Just close your eyes)",
+        "And STAY WITH ME",
+        "Wherever you are",
+        "I'll always be by your side",
+        "Everytime you cry",
+        "I'll always be by your side",
+        "Just breathe in breathe out",
+        "I'll always be by your side",
+        "Remain as you are",
+        "I'll always be by your side"
+      ]
     },
     {
       id: 8,
@@ -574,7 +1073,46 @@ export default function App() {
       type: "【赤羽原创曲】",
       desc: "一出未命名的空想话剧，在荒诞的舞台上默然谢幕。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/324480500-1-208.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/KeqS/5%25E6%259C%258811%25E6%2597%25A5%287%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/KeqS/5%25E6%259C%258811%25E6%2597%25A5%287%29.mp4",
+      lyrics: [
+        "四季更改 迷墙 仍在",
+        "点燃仇恨 控制的时代",
+        "造物主将 记忆 掩盖",
+        "信徒撕开灰色面具",
+        "却早已落入空想话剧",
+        "光环消去",
+        "虚假的正义将憧憬都粉碎",
+        "请告诉我",
+        "在黑夜中",
+        "那毁灭的声音 响彻天际",
+        "燃烧过后 失去定义",
+        "被泪水打湿的心灵",
+        "终会再次绽放 穿透幻象",
+        "怒火化作 黑色乐章",
+        "凝结而成 这毁灭的力量",
+        "四季更改 围城 迭代",
+        "流放之外 空想的时代",
+        "演员离去 笑声继续",
+        "资本将那肮脏王冠从尸体上扯下",
+        "昔日的盾却化作文化的杀手",
+        "娱乐至死 垃圾至上",
+        "是病变的轨迹 褪色的心",
+        "背向而行 愚昧至今",
+        "带上我超载的身体",
+        "将这幻象点燃 渗出的光",
+        "穿过黑暗 化作方向",
+        "舞台落下 嘲笑回响",
+        "四季变迁万物回归混乱",
+        "人性消去在利益中循环",
+        "小时候那颗憧憬的心如今消失殆尽",
+        "能否听清",
+        "那毁灭的声音 响彻天际",
+        "燃烧过后 失去定义",
+        "被泪水打湿的心灵",
+        "终会再次绽放 穿透幻象",
+        "怒火化作 黑色乐章",
+        "凝结而成 这毁灭的力量"
+      ]
     },
     {
       id: 9,
@@ -582,7 +1120,26 @@ export default function App() {
       type: "【诗岸原创曲】",
       desc: "任由身躯与意识一起，被这深不见底的靛蓝海水彻底淹没。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/25939019125-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/aN8w/5%25E6%259C%258811%25E6%2597%25A5%281%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/aN8w/5%25E6%259C%258811%25E6%2597%25A5%281%29.mp4",
+      lyrics: [
+        "时间",
+        "空间",
+        "漫步在无人的星球",
+        "随波逐流的原地踏步",
+        "无聊至极的自我厌恶",
+        "你找到了吗",
+        "关于自己的答案",
+        "想说的话",
+        "总是在为时已晚之后落下",
+        "用力挣扎仍无法掩盖害怕",
+        "告诉我",
+        "想要知道人类心间的温差",
+        "融化",
+        "抱着我",
+        "淹没在这毁灭的声压",
+        "见证吧",
+        "如此耀眼的死亡"
+      ]
     }
   ];
 
@@ -591,7 +1148,8 @@ export default function App() {
       title: track.title,
       type: track.type,
       desc: track.desc,
-      videoUrl: track.videoUrl
+      videoUrl: track.videoUrl,
+      lyrics: track.lyrics
     });
     setIsLocked(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -768,11 +1326,11 @@ export default function App() {
           {discography.map((item, index) => (
             <div
               key={item.id}
-              className="cursor-pointer relative overflow-hidden bg-zinc-900 group aspect-square md:aspect-[4/3] flex items-center justify-center"
+              className="cursor-pointer relative overflow-hidden bg-zinc-900 group aspect-square md:aspect-[4/3] flex items-center justify-center transition-all duration-500"
               onDoubleClick={() => handleDoubleClick(item)}
             >
               <VideoCover src={item.cover} hasInteracted={hasInteracted} />
-              <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end pointer-events-none z-10">
+              <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end pointer-events-none z-10 text-left">
                 <h3 className="text-xl md:text-2xl font-serif text-white tracking-wide drop-shadow-md">{item.title}</h3>
                 <p className="text-[10px] uppercase tracking-[0.1em] opacity-80 mt-1 text-white drop-shadow-md">{item.type}</p>
               </div>
@@ -780,6 +1338,9 @@ export default function App() {
           ))}
         </div>
       </section>
+
+      {/* Lyrics Interface Section */}
+      <LyricsSection track={currentVideo} intensityRef={audioIntensityRef} />
 
       {/* About Section */}
       <section id="about" className="relative z-20 py-32 px-6 md:px-12 border-t border-white/5">
