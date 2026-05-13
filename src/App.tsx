@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { ArrowDown, Music, Play, ExternalLink, Mail, Disc } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const VideoCover = ({ src }: { src: string }) => {
   const [inView, setInView] = useState(false);
@@ -31,7 +31,7 @@ const VideoCover = ({ src }: { src: string }) => {
           loop
           muted
           playsInline
-          preload="none"
+          preload="auto"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-60 group-hover:opacity-100 pointer-events-none"
         />
       )}
@@ -44,6 +44,12 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLocked, setIsLocked] = useState(true);
   const [bounce, setBounce] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState({
+    title: "温差",
+    type: "【星尘原创曲】 / 重型盯鞋",
+    desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
+    videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4"
+  });
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -118,7 +124,63 @@ export default function App() {
     if (videoRef.current) {
       videoRef.current.volume = volume;
     }
-  }, []);
+  }, [volume, currentVideo]);
+
+  useEffect(() => {
+    const attemptPlay = async () => {
+      if (!videoRef.current) return;
+      
+      try {
+        // Try playing unmuted first (target volume is already set in the effect above)
+        videoRef.current.muted = false;
+        await videoRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.log("Unmuted autoplay failed, trying muted.");
+        // If unmuted fails, try muted (guaranteed to work in most browsers)
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          try {
+            await videoRef.current.play();
+            setIsPlaying(true);
+          } catch (e) {
+            console.error("Muted autoplay also failed:", e);
+            setIsPlaying(false);
+          }
+        }
+      }
+    };
+    
+    // Tiny delay to ensure DOM is ready
+    const timer = setTimeout(attemptPlay, 100);
+    return () => clearTimeout(timer);
+  }, [currentVideo]);
+
+  // Unmute on first user interaction if it was muted by autoplay policy
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (videoRef.current && videoRef.current.muted) {
+        videoRef.current.muted = false;
+        videoRef.current.volume = volume;
+        // In case it wasn't playing, try playing again
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('wheel', handleFirstInteraction);
+    };
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+    window.addEventListener('wheel', handleFirstInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('wheel', handleFirstInteraction);
+    };
+  }, [volume]);
 
   const handleVideoClick = () => {
     if (videoRef.current) {
@@ -151,13 +213,6 @@ export default function App() {
       }
     }, 50);
   };
-
-  const [currentVideo, setCurrentVideo] = useState({
-    title: "温差",
-    type: "【星尘原创曲】 / 重型盯鞋",
-    desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
-    videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4"
-  });
 
   const discography = [
     {
@@ -286,7 +341,9 @@ export default function App() {
             src={currentVideo.videoUrl}
             autoPlay
             loop
+            muted
             playsInline
+            preload="auto"
             className="w-full h-full object-cover"
           />
         </div>
