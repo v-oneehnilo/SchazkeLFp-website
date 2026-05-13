@@ -489,7 +489,7 @@ const LyricsSection = ({ track, intensityRef }: { track: any; intensityRef: Reac
 
 export default function App() {
   const [volume, setVolume] = useState(0.1);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isLocked, setIsLocked] = useState(true);
   const [bounce, setBounce] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -501,6 +501,7 @@ export default function App() {
   const animationFrameRef = useRef<number | null>(null);
 
   const [currentVideo, setCurrentVideo] = useState({
+    id: 1,
     title: "温差",
     type: "【星尘原创曲】 / 重型盯鞋",
     desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
@@ -639,49 +640,19 @@ export default function App() {
       update();
     };
 
-    const handleStart = () => {
-      if (audioContextRef.current) {
-        if (audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume().catch(console.error);
-        }
-        return;
+    const handleResumeAudio = () => {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(console.error);
       }
-      initAudio();
     };
 
     const handleFirstInteraction = () => {
       if (hasInteracted) {
-        // If already interacted, just try to play/unmute again to be safe
-        if (videoRef.current) {
-          videoRef.current.muted = false;
-          videoRef.current.volume = volume;
-          videoRef.current.play().catch(() => {});
-        }
+        handleResumeAudio();
         return;
       }
       setHasInteracted(true);
-      
-      if (videoRef.current) {
-        // Force unmuted play on interaction
-        videoRef.current.muted = false;
-        videoRef.current.volume = volume;
-        const playPromise = videoRef.current.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            setIsPlaying(true);
-          }).catch((err) => {
-            console.warn("Play failed even with interaction:", err);
-            // Fallback to muted play if unmuted failed
-            if (videoRef.current) {
-               videoRef.current.muted = true;
-               videoRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
-            }
-          });
-        }
-      }
-      
-      handleStart();
+      initAudio();
       
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
@@ -736,6 +707,36 @@ export default function App() {
     const timer = setTimeout(attemptPlay, 100);
     return () => clearTimeout(timer);
   }, [currentVideo, hasInteracted, volume]);
+
+  const startExperience = async () => {
+    setHasInteracted(true);
+    
+    if (audioContextRef.current) {
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(console.error);
+      }
+    }
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      video.muted = false;
+      video.volume = volume;
+      await video.play();
+      setIsPlaying(true);
+    } catch (error) {
+      console.warn("Manual play failed:", error);
+      // Fallback for some browsers
+      video.muted = true;
+      try {
+        await video.play();
+        setIsPlaying(true);
+      } catch (e) {
+        setIsPlaying(false);
+      }
+    }
+  };
 
   const handleVideoClick = () => {
     setHasInteracted(true);
@@ -1158,6 +1159,7 @@ export default function App() {
 
   const handleDoubleClick = (track: any) => {
     setCurrentVideo({
+      id: track.id,
       title: track.title,
       type: track.type,
       desc: track.desc,
@@ -1179,10 +1181,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.2, transition: { duration: 0.8, ease: "easeOut" } }}
-            onClick={() => {
-              // This acts as the primary user gesture for mobile
-              setHasInteracted(true);
-            }}
+            onClick={startExperience}
             className="fixed inset-0 z-[200] flex flex-col items-center justify-center cursor-pointer bg-black/40 backdrop-blur-[4px] pointer-events-auto"
           >
             <motion.div
