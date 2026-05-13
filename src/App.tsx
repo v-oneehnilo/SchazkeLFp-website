@@ -156,7 +156,7 @@ export default function App() {
     title: "温差",
     type: "【星尘原创曲】 / 重型盯鞋",
     desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
-    videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/26/75/28553447526/28553447526-1-192.mp4?e=ig8euxZM2rNcNbRgnwdVhwdlhWN3hwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&platform=html5&gen=playurlv3&mid=0&nbs=1&uipk=5&trid=a1ee90cda3fb4058a39806d3de70febO&os=estghw&og=hw&deadline=1778497092&oi=1385955528&upsig=301235b7b8ff4d3fe481d3329c9888de&uparams=e,platform,gen,mid,nbs,uipk,trid,os,og,deadline,oi&bvc=vod&nettype=1&bw=1028614&agrr=1&buvid=&build=7330300&dl=0&f=O_0_0&orderid=0,3"
+    videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4"
   });
 
   const discography = [
