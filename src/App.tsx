@@ -640,41 +640,76 @@ export default function App() {
     };
 
     const handleStart = () => {
-      if (audioContextRef.current?.state === 'suspended') {
-        audioContextRef.current.resume();
+      if (audioContextRef.current) {
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(console.error);
+        }
+        return;
       }
       initAudio();
     };
 
-    window.addEventListener('click', handleStart);
-    window.addEventListener('keydown', handleStart);
+    const handleFirstInteraction = () => {
+      setHasInteracted(true);
+      if (videoRef.current) {
+        // Essential for iOS: play must be triggered directly in event
+        videoRef.current.muted = false;
+        videoRef.current.volume = volume;
+        videoRef.current.play().catch((err) => {
+          console.log("Play failed on interaction, trying muted:", err);
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            videoRef.current.play().catch(console.error);
+          }
+        });
+        setIsPlaying(true);
+      }
+      
+      handleStart();
+      
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
 
     return () => {
-      window.removeEventListener('click', handleStart);
-      window.removeEventListener('keydown', handleStart);
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, []);
+  }, [volume]);
 
   useEffect(() => {
     const attemptPlay = async () => {
       if (!videoRef.current) return;
       
       try {
-        // Try playing unmuted first (target volume is already set in the effect above)
-        videoRef.current.muted = false;
-        await videoRef.current.play();
-        setIsPlaying(true);
+        // If we haven't interacted yet, we MUST stay muted for autoplay to work
+        if (!hasInteracted) {
+          videoRef.current.muted = true;
+          await videoRef.current.play();
+          setIsPlaying(true);
+        } else {
+          // If interacted, try to play unmuted
+          videoRef.current.muted = false;
+          videoRef.current.volume = volume;
+          await videoRef.current.play();
+          setIsPlaying(true);
+        }
       } catch (error) {
-        console.log("Unmuted autoplay failed, trying muted.");
-        // If unmuted fails, try muted (guaranteed to work in most browsers)
-        if (videoRef.current) {
+        console.log("Autoplay attempt failed:", error);
+        // Fallback to muted if unmuted failed
+        if (videoRef.current && !videoRef.current.muted) {
           videoRef.current.muted = true;
           try {
             await videoRef.current.play();
             setIsPlaying(true);
           } catch (e) {
-            console.error("Muted autoplay also failed:", e);
             setIsPlaying(false);
           }
         }
@@ -684,45 +719,7 @@ export default function App() {
     // Tiny delay to ensure DOM is ready
     const timer = setTimeout(attemptPlay, 100);
     return () => clearTimeout(timer);
-  }, [currentVideo]);
-
-  // Unmute and resume AudioContext on first user interaction
-  useEffect(() => {
-    const handleFirstInteraction = () => {
-      setHasInteracted(true);
-      if (videoRef.current) {
-        if (videoRef.current.muted) {
-          videoRef.current.muted = false;
-          videoRef.current.volume = volume;
-        }
-        
-        // Ensure AudioContext is resumed
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        
-        videoRef.current.play().catch(() => {});
-        setIsPlaying(true);
-      }
-      
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
-      window.removeEventListener('wheel', handleFirstInteraction);
-      window.removeEventListener('keydown', handleFirstInteraction);
-    };
-
-    window.addEventListener('click', handleFirstInteraction);
-    window.addEventListener('touchstart', handleFirstInteraction);
-    window.addEventListener('wheel', handleFirstInteraction);
-    window.addEventListener('keydown', handleFirstInteraction);
-
-    return () => {
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
-      window.removeEventListener('wheel', handleFirstInteraction);
-      window.removeEventListener('keydown', handleFirstInteraction);
-    };
-  }, [volume]);
+  }, [currentVideo, hasInteracted, volume]);
 
   const handleVideoClick = () => {
     setHasInteracted(true);
@@ -1166,7 +1163,11 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.2, transition: { duration: 0.8, ease: "easeOut" } }}
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none bg-black/40 backdrop-blur-[4px]"
+            onClick={() => {
+              // This acts as the primary user gesture for mobile
+              setHasInteracted(true);
+            }}
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center cursor-pointer bg-black/40 backdrop-blur-[4px] pointer-events-auto"
           >
             <motion.div
               animate={{
@@ -1190,7 +1191,7 @@ export default function App() {
               transition={{ delay: 0.8, duration: 1.5 }}
               className="mt-16 text-white/30 text-[12px] uppercase tracking-[2em] font-light text-center"
             >
-              Click Everywhere to Begin
+              Touch to Begin
             </motion.div>
           </motion.div>
         )}
@@ -1228,20 +1229,31 @@ export default function App() {
           animate={bounce ? { y: [0, -60, 0] } : { y: 0 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
         >
-          {/* Cinematic Background Layer */}
-          <div className="absolute inset-0 z-0 pointer-events-auto cursor-pointer" onClick={handleVideoClick}>
-          <video 
-            ref={videoRef}
-            src={currentVideo.videoUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            crossOrigin="anonymous"
-            preload="auto"
-            className="w-full h-full object-cover"
-          />
-        </div>
+      {/* Cinematic Background Layer */}
+      <div className="absolute inset-0 z-0 pointer-events-auto cursor-pointer flex items-center justify-center" onClick={handleVideoClick}>
+        <video 
+          ref={videoRef}
+          src={currentVideo.videoUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          crossOrigin="anonymous"
+          preload="auto"
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Mobile Play Button Fallback */}
+        {!isPlaying && hasInteracted && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative z-30 p-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20"
+          >
+            <Play className="w-12 h-12 text-white fill-white" />
+          </motion.div>
+        )}
+      </div>
         
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 z-10 pointer-events-none" />
