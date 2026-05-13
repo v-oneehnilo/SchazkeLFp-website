@@ -600,46 +600,46 @@ export default function App() {
     }
   }, [volume, currentVideo]);
 
-  useEffect(() => {
-    const initAudio = () => {
-      if (!videoRef.current || audioContextRef.current) return;
+  const initAudio = () => {
+    if (!videoRef.current || audioContextRef.current) return;
 
-      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
-      const ctx = new AudioContextClass();
-      const analyser = ctx.createAnalyser();
-      const source = ctx.createMediaElementSource(videoRef.current);
+    const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+    const ctx = new AudioContextClass();
+    const analyser = ctx.createAnalyser();
+    const source = ctx.createMediaElementSource(videoRef.current);
 
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    analyser.connect(ctx.destination);
 
-      audioContextRef.current = ctx;
-      analyserRef.current = analyser;
-      sourceRef.current = source;
+    audioContextRef.current = ctx;
+    analyserRef.current = analyser;
+    sourceRef.current = source;
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const update = () => {
-        if (!analyserRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataArray);
-        
-        // Focus on low frequencies (bass/kicks) for the "beat"
-        let sum = 0;
-        const bassCount = 10; // First 10 bins are low freq
-        for (let i = 0; i < bassCount; i++) {
-          sum += dataArray[i];
-        }
-        const intensity = sum / (bassCount * 255);
-        audioIntensityRef.current = intensity;
-        
-        // Update state less frequently for general UI, but use Ref for high-performance canvas
-        if (Math.random() > 0.8) {
-          setAudioIntensity(intensity);
-        }
-        animationFrameRef.current = requestAnimationFrame(update);
-      };
-      update();
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const update = () => {
+      if (!analyserRef.current) return;
+      analyserRef.current.getByteFrequencyData(dataArray);
+      
+      // Focus on low frequencies (bass/kicks) for the "beat"
+      let sum = 0;
+      const bassCount = 10; // First 10 bins are low freq
+      for (let i = 0; i < bassCount; i++) {
+        sum += dataArray[i];
+      }
+      const intensity = sum / (bassCount * 255);
+      audioIntensityRef.current = intensity;
+      
+      // Update state less frequently for general UI, but use Ref for high-performance canvas
+      if (Math.random() > 0.8) {
+        setAudioIntensity(intensity);
+      }
+      animationFrameRef.current = requestAnimationFrame(update);
     };
+    update();
+  };
 
+  useEffect(() => {
     const handleResumeAudio = () => {
       if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
         audioContextRef.current.resume().catch(console.error);
@@ -717,6 +717,9 @@ export default function App() {
 
   const startExperience = async () => {
     setHasInteracted(true);
+    
+    // Initialize audio on first click
+    initAudio();
     
     if (audioContextRef.current) {
       if (audioContextRef.current.state === 'suspended') {
@@ -1254,7 +1257,7 @@ export default function App() {
       {/* Cinematic Background Layer */}
       <div className="absolute inset-0 z-0 pointer-events-auto cursor-pointer flex items-center justify-center bg-black" onClick={handleVideoClick}>
         <video 
-          key={`${currentVideo.id}-${hasInteracted}`}
+          key={currentVideo.id}
           ref={videoRef}
           autoPlay
           loop
