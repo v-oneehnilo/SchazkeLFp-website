@@ -9,10 +9,8 @@ const VideoCover = ({ src }: { src: string }) => {
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setInView(true);
-      }
-    }, { rootMargin: '300px' });
+      setInView(entry.isIntersecting);
+    }, { rootMargin: '50px' });
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, []);
@@ -24,7 +22,7 @@ const VideoCover = ({ src }: { src: string }) => {
   }, [inView]);
 
   return (
-    <div ref={ref} className="absolute inset-0 z-0 w-full h-full bg-zinc-900">
+    <div ref={ref} className="absolute inset-0 z-0 w-full h-full bg-zinc-900 transition-colors duration-500">
       {inView && (
         <video 
           ref={videoRef}
@@ -33,6 +31,7 @@ const VideoCover = ({ src }: { src: string }) => {
           loop
           muted
           playsInline
+          preload="none"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-60 group-hover:opacity-100 pointer-events-none"
         />
       )}
@@ -166,7 +165,7 @@ export default function App() {
       title: "温差",
       type: "【星尘原创曲】 / 重型盯鞋",
       desc: "在极度的喧嚣中寻找宁静，于温差之间感受情绪的撕裂与弥合。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/26/75/28553447526/28553447526-1-192.mp4?e=ig8euxZM2rNcNbRgnwdVhwdlhWN3hwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&platform=html5&gen=playurlv3&mid=0&nbs=1&uipk=5&trid=a1ee90cda3fb4058a39806d3de70febO&os=estghw&og=hw&deadline=1778497092&oi=1385955528&upsig=301235b7b8ff4d3fe481d3329c9888de&uparams=e,platform,gen,mid,nbs,uipk,trid,os,og,deadline,oi&bvc=vod&nettype=1&bw=1028614&agrr=1&buvid=&build=7330300&dl=0&f=O_0_0&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/28553447526-1-192.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/4d9W/5%25E6%259C%258811%25E6%2597%25A5.mp4"
     },
     {
@@ -174,7 +173,7 @@ export default function App() {
       title: "if_深呼吸",
       type: "【星尘原创曲】 / 盯鞋核 / 重型盯鞋",
       desc: "如果在深渊中无法停下坠落，不如尝试最后一次深呼吸。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/71/06/35816540671/35816540671-1-192.mp4?e=ig8euxZM2rNcNbRHnWdVhwdlhWeHhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&mid=0&uipk=5&os=estgcos&og=hw&platform=html5&trid=97e52285dae74c5d89aaa7941c16eafO&deadline=1778500462&nbs=1&gen=playurlv3&oi=2067347262&upsig=8a2834156e046d1fa08e88eaa6a62de6&uparams=e,mid,uipk,os,og,platform,trid,deadline,nbs,gen,oi&bvc=vod&nettype=1&bw=1592246&dl=0&f=O_0_0&agrr=1&buvid=&build=7330300&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/35816540671-1-192.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/1Zi1/5%25E6%259C%258811%25E6%2597%25A5%288%29.mp4"
     },
     {
@@ -182,7 +181,7 @@ export default function App() {
       title: "你会来我的葬礼吗",
       type: "【星尘原创曲】 / 金属核 / 盯鞋",
       desc: "金属核与盯鞋的交织融合，于激烈的节奏中质问内心的归属。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/45/87/30601838745/30601838745-1-192.mp4?e=ig8euxZM2rNcNbR1nwdVhwdlhWR3hwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&trid=7b65a60df481450a81eb475256409f3O&gen=playurlv3&og=hw&deadline=1778500717&platform=html5&mid=0&os=08cbv&nbs=1&uipk=5&oi=2067347262&upsig=bc8fc3f5fee6962e7e2c195b7205554b&uparams=e,trid,gen,og,deadline,platform,mid,os,nbs,uipk,oi&bvc=vod&nettype=1&bw=946839&f=O_0_0&agrr=1&buvid=&build=7330300&dl=0&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/30601838745-1-192.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/KeqS/5%25E6%259C%258811%25E6%2597%25A5%287%29.mp4"
     },
     {
@@ -190,15 +189,15 @@ export default function App() {
       title: "PANIC ATTACK",
       type: "【星尘原创】",
       desc: "强烈的情绪如同恐慌发作，冲击着崩坏的现实边界。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/41/17/1276391741/1276391741-1-192.mp4?e=ig8euxZM2rNcNbRgnWdVhwdlhWNHhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&deadline=1778500880&trid=1af9165aac824c70ac609478df61645O&nbs=1&mid=0&gen=playurlv3&os=estgcos&og=hw&uipk=5&oi=144233936&platform=html5&upsig=bc8df67dbeb94eb0eb630a4ba00cb63a&uparams=e,deadline,trid,nbs,mid,gen,os,og,uipk,oi,platform&bvc=vod&nettype=1&bw=1037941&agrr=1&buvid=&build=7330300&dl=0&f=O_0_0&orderid=0,3",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/5pHc/5%25E6%259C%258811%25E6%2597%25A5%286%29.mp4"
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/1276391741-1-192.mp4",
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/NKUP/5%25E6%259C%258811%25E6%2597%25A5%283%29.mp4"
     },
     {
       id: 5,
       title: "-- --- - ....",
       type: "【星尘原创曲】",
       desc: "M-O-T-H，如飞蛾扑火般去向未知的迷茫。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/32/02/27052740232/27052740232-1-192.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&uipk=5&trid=e3ff6668ec6a485cb36230e11a32a8cO&gen=playurlv3&mid=0&deadline=1778500995&nbs=1&platform=html5&os=zosbv&og=hw&oi=2067347262&upsig=e8d4260bc1459176f2f9026be7dec6ba&uparams=e,uipk,trid,gen,mid,deadline,nbs,platform,os,og,oi&bvc=vod&nettype=1&bw=681027&agrr=1&buvid=&build=7330300&dl=0&f=O_0_0&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/27052740232-1-192.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/0n4A/5%25E6%259C%258811%25E6%2597%25A5%285%29.mp4"
     },
     {
@@ -206,7 +205,7 @@ export default function App() {
       title: "...只是幻觉",
       type: "feat.星尘infinity / 盯鞋 / 金属核",
       desc: "重重迷雾与声墙之中，究竟什么是真实，什么只是幻觉。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/73/19/30471291973/30471291973-1-192.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&platform=html5&oi=1385955528&deadline=1778501033&gen=playurlv3&trid=4cd98b4a67ca40a6a4580cf796b9b64O&nbs=1&mid=0&os=estghw&og=hw&uipk=5&upsig=f0d7c3f27ce4e87d93cbe9d33294b6ab&uparams=e,platform,oi,deadline,gen,trid,nbs,mid,os,og,uipk&bvc=vod&nettype=1&bw=459814&f=O_0_0&agrr=1&buvid=&build=7330300&dl=0&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/30471291973-1-192.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/9Ac0/5%25E6%259C%258811%25E6%2597%25A5%284%29.mp4"
     },
     {
@@ -214,15 +213,15 @@ export default function App() {
       title: "深呼吸",
       type: "【星尘原创】",
       desc: "深呼吸，在一切坠落之前找回自我片刻的宁静。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/88/39/1353293988/1353293988-1-192.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&trid=96823e9447a649ceaa6cf26e0bd31a8O&uipk=5&platform=html5&gen=playurlv3&os=08cbv&og=hw&mid=0&nbs=1&deadline=1778501100&oi=2067284620&upsig=2bfc86523c43c37527512b0e79bb4c1f&uparams=e,trid,uipk,platform,gen,os,og,mid,nbs,deadline,oi&bvc=vod&nettype=1&bw=518734&build=7330300&dl=0&f=O_0_0&agrr=1&buvid=&orderid=0,3",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/NKUP/5%25E6%259C%258811%25E6%2597%25A5%283%29.mp4"
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/1353293988-1-192.mp4",
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/5pHc/5%25E6%259C%258811%25E6%2597%25A5%286%29.mp4"
     },
     {
       id: 8,
       title: "空想话剧",
       type: "【赤羽原创曲】",
       desc: "一出未命名的空想话剧，在荒诞的舞台上默然谢幕。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/00/05/324480500/324480500-1-208.mp4?e=ig8euxZM2rNcNbNM7WdVhwdlhbKBhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&platform=html5&deadline=1778501191&trid=08bfa01b93954e7bbca6597500239c6O&nbs=1&uipk=5&gen=playurlv3&os=estghw&og=hw&oi=144233936&mid=0&upsig=fc3ea185dbe56ece76952c07020f5c0a&uparams=e,platform,deadline,trid,nbs,uipk,gen,os,og,oi,mid&bvc=vod&nettype=1&bw=1965159&f=O_0_0&agrr=1&buvid=&build=7330300&dl=0&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/324480500-1-208.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/TVhj/5%25E6%259C%258811%25E6%2597%25A5%282%29.mp4"
     },
     {
@@ -230,7 +229,7 @@ export default function App() {
       title: "淹没于靛蓝",
       type: "【诗岸原创曲】",
       desc: "任由身躯与意识一起，被这深不见底的靛蓝海水彻底淹没。",
-      videoUrl: "https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/25/91/25939019125/25939019125-1-192.mp4?e=ig8euxZM2rNcNbRj7bdVhwdlhWTjhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&oi=2067347262&mid=0&deadline=1778501236&trid=68fc1e11f79b4e4aa6e53174e958a3dO&nbs=1&uipk=5&platform=html5&gen=playurlv3&os=estgcos&og=cos&upsig=950433aef00c53ec28c142445d4ded47&uparams=e,oi,mid,deadline,trid,nbs,uipk,platform,gen,os,og&bvc=vod&nettype=1&bw=1337193&agrr=1&buvid=&build=7330300&dl=0&f=O_0_0&orderid=0,3",
+      videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/25939019125-1-192.mp4",
       cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/aN8w/5%25E6%259C%258811%25E6%2597%25A5%281%29.mp4"
     }
   ];
@@ -416,7 +415,7 @@ export default function App() {
                </div>
                
                <div className="space-y-4">
-                  <a href="https://space.bilibili.com/630082679?spm_id_from=333.337.0.0" target="_blank" rel="noreferrer" className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all group">
+                  <a href="https://space.bilibili.com/630082679?spm_id_from=333.337.0.0" target="_blank" rel="noreferrer" className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all group cursor-pointer">
                     <div className="w-10 h-10 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity">
                       <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56v-.004C.556 20.12.036 18.861 0 17.35V9.98c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.054-1.2h.001c-.137-.152-.224-.316-.264-.492a.86.86 0 0 1-.018-.175.76.76 0 0 1 .236-.51c.143-.139.314-.216.513-.23.193-.014.372.031.536.136l2.453 2.753h6.98l2.46-2.766c.15-.105.323-.15.518-.136.196.014.365.1.508.24m-.34 8.287L15.352 10.8a.72.72 0 1 0-1.028 1.018l2.122 2.14a.725.725 0 0 0 1.027-1.018M6.541 12.94a.72.72 0 1 0 1.028-1.017l-2.121-2.14a.725.725 0 0 0-1.028 1.018l2.121 2.14"/>
@@ -425,6 +424,28 @@ export default function App() {
                     <div>
                       <h4 className="text-white font-bold uppercase tracking-[0.1em] text-xs">Bilibili 个人主页</h4>
                       <p className="text-[10px] opacity-40 uppercase tracking-wider mt-1">Follow my latest releases</p>
+                    </div>
+                  </a>
+
+                  <a href="https://open.spotify.com/intl-es/artist/4T2vBV5CipuF2G8ODSOSxK" target="_blank" rel="noreferrer" className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all group cursor-pointer">
+                    <div className="w-10 h-10 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.6.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-white font-bold uppercase tracking-[0.1em] text-xs">Spotify</h4>
+                      <p className="text-[10px] opacity-40 uppercase tracking-wider mt-1">Listen on Spotify</p>
+                    </div>
+                  </a>
+
+                  <a href="https://vocadb.net/Ar/76318" target="_blank" rel="noreferrer" className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all group cursor-pointer">
+                    <div className="w-10 h-10 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity">
+                      <Music className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-bold uppercase tracking-[0.1em] text-xs">VocaDB</h4>
+                      <p className="text-[10px] opacity-40 uppercase tracking-wider mt-1">Vocaloid Database Profile</p>
                     </div>
                   </a>
 
@@ -445,8 +466,10 @@ export default function App() {
 
       {/* Footer */}
       <footer className="relative z-30 px-6 md:px-12 py-8 flex flex-col md:flex-row justify-between items-center border-t border-white/5 gap-6">
-        <div className="flex space-x-8 text-[10px] uppercase tracking-[0.2em] font-semibold">
-          <a href="#" className="hover:text-white text-white/50 transition-colors">Bilibili</a>
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-[10px] uppercase tracking-[0.2em] font-semibold">
+          <a href="https://space.bilibili.com/630082679?spm_id_from=333.337.0.0" target="_blank" rel="noreferrer" className="hover:text-white text-white/50 transition-colors">Bilibili</a>
+          <a href="https://open.spotify.com/intl-es/artist/4T2vBV5CipuF2G8ODSOSxK" target="_blank" rel="noreferrer" className="hover:text-white text-white/50 transition-colors">Spotify</a>
+          <a href="https://vocadb.net/Ar/76318" target="_blank" rel="noreferrer" className="hover:text-white text-white/50 transition-colors">VocaDB</a>
           <a href="#" className="hover:text-white text-white/50 transition-colors">Weibo</a>
           <a href="#" className="hover:text-white text-white/50 transition-colors">NetEase Music</a>
         </div>
