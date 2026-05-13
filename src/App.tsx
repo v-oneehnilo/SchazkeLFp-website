@@ -182,7 +182,7 @@ export default function App() {
       type: "【星尘原创曲】 / 金属核 / 盯鞋",
       desc: "金属核与盯鞋的交织融合，于激烈的节奏中质问内心的归属。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/30601838745-1-192.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/KeqS/5%25E6%259C%258811%25E6%2597%25A5%287%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/TVhj/5%25E6%259C%258811%25E6%2597%25A5%282%29.mp4"
     },
     {
       id: 4,
@@ -222,7 +222,7 @@ export default function App() {
       type: "【赤羽原创曲】",
       desc: "一出未命名的空想话剧，在荒诞的舞台上默然谢幕。",
       videoUrl: "https://uv52w2dqsyqwbfke.public.blob.vercel-storage.com/324480500-1-208.mp4",
-      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/TVhj/5%25E6%259C%258811%25E6%2597%25A5%282%29.mp4"
+      cover: "https://videos.tuchuangyun.top/autoupload/en/H-VgkTBe2zwM0UYoCV-zjY0_ynLCSh1voT__6wvSSSY/20260511/KeqS/5%25E6%259C%258811%25E6%2597%25A5%287%29.mp4"
     },
     {
       id: 9,
