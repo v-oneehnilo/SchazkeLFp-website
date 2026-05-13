@@ -675,6 +675,13 @@ export default function App() {
     const attemptPlay = async () => {
       if (!videoRef.current) return;
       
+      // Mobile Autoplay Prevention: Skip initial autoplay on mobile to respect browser policies and user request
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (!hasInteracted && isMobile) {
+        console.log("Mobile device detected, skipping initial autoplay.");
+        return;
+      }
+      
       try {
         // If we haven't interacted yet, we MUST stay muted for autoplay to work
         if (!hasInteracted) {
