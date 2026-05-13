@@ -650,7 +650,15 @@ export default function App() {
     };
 
     const handleFirstInteraction = () => {
-      if (hasInteracted) return;
+      if (hasInteracted) {
+        // If already interacted, just try to play/unmute again to be safe
+        if (videoRef.current) {
+          videoRef.current.muted = false;
+          videoRef.current.volume = volume;
+          videoRef.current.play().catch(() => {});
+        }
+        return;
+      }
       setHasInteracted(true);
       
       if (videoRef.current) {
@@ -664,7 +672,7 @@ export default function App() {
             setIsPlaying(true);
           }).catch((err) => {
             console.warn("Play failed even with interaction:", err);
-            // Fallback to muted play
+            // Fallback to muted play if unmuted failed
             if (videoRef.current) {
                videoRef.current.muted = true;
                videoRef.current.play().then(() => setIsPlaying(true)).catch(console.error);
@@ -1238,30 +1246,30 @@ export default function App() {
           transition={{ duration: 0.6, ease: "easeInOut" }}
         >
       {/* Cinematic Background Layer */}
-      <div className="absolute inset-0 z-0 pointer-events-auto cursor-pointer flex items-center justify-center" onClick={handleVideoClick}>
+      <div className="absolute inset-0 z-0 pointer-events-auto cursor-pointer flex items-center justify-center bg-black" onClick={handleVideoClick}>
         <video 
-          key={currentVideo.videoUrl}
+          key={`${currentVideo.id}-${hasInteracted}`}
           ref={videoRef}
           autoPlay
           loop
           muted={!hasInteracted}
           playsInline
+          webkitPlaysInline={true}
           className="w-full h-full object-cover"
           crossOrigin="anonymous"
           preload="auto"
         >
           <source src={currentVideo.videoUrl} type="video/mp4" />
-          Your browser does not support the video tag.
         </video>
         
         {/* Mobile Play Button Fallback */}
-        {(!isPlaying || !hasInteracted) && (
+        {(!isPlaying) && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             className="absolute z-30 p-8 rounded-full bg-white/5 backdrop-blur-[2px] border border-white/10"
           >
-            <Play className="w-10 h-10 text-white opacity-40" />
+            <Play className="w-10 h-10 text-white opacity-40 shadow-2xl" />
           </motion.div>
         )}
       </div>
